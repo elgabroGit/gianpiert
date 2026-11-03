@@ -5,9 +5,10 @@
   "description": "Gestionale Lana Studio in locale: stesso frontend dell'artifact claude.ai, archivio SQLite",
   "main": "server.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <26"
   },
   "scripts": {
+    "setup": "node scripts/setup.js",
     "start": "node server.js",
     "dev": "node --watch server.js",
     "user": "node scripts/user.js",
