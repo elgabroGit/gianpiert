@@ -1,0 +1,25 @@
+{
+  "name": "lana-studio-gestionale",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Gestionale Lana Studio in locale: stesso frontend dell'artifact claude.ai, archivio SQLite",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "user": "node scripts/user.js",
+    "export": "node scripts/export.js",
+    "import": "node scripts/import.js",
+    "check": "node scripts/check.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "12.9.0",
+    "cookie-session": "^2.1.1",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0"
+  }
+}

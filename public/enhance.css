@@ -1,0 +1,262 @@
+/*
+ * Ritocchi all'interfaccia originale, senza toccarne il codice: si carica dopo lo <style> di index.html
+ * e lo sovrascrive. Telefono: barra delle sezioni in basso, moduli come pannelli dal basso, tabelle
+ * delle fatture come schede, campi a 16px (niente zoom su iOS), bersagli da almeno 40px.
+ * Desktop: barra superiore traslucida, ombre leggere, schede che si sollevano al passaggio.
+ * Le animazioni di ingresso delle viste sono in enhance.js: l'app ridisegna #app a ogni
+ * aggiornamento del server e un'animazione CSS ripartirebbe ogni volta.
+ */
+
+:root{
+  --shadow-1:0 1px 2px rgba(17,17,16,.05),0 1px 1px rgba(17,17,16,.03);
+  --shadow-2:0 14px 32px -14px rgba(17,17,16,.28),0 2px 6px -2px rgba(17,17,16,.08);
+  --shadow-3:0 24px 60px -12px rgba(17,17,16,.35);
+  --ease-out:cubic-bezier(.2,.8,.2,1);
+  --ease-spring:cubic-bezier(.3,1.35,.5,1);
+  --i-clienti:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='7' width='17' height='12.5' rx='2.5'/%3E%3Cpath d='M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17'/%3E%3C/svg%3E");
+  --i-task:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='4'/%3E%3Cpath d='M8.5 12.2l2.4 2.4 4.8-5.2'/%3E%3C/svg%3E");
+  --i-calendario:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='5.5' width='16' height='14.5' rx='3'/%3E%3Cpath d='M4 10h16M8.5 3.5v4M15.5 3.5v4'/%3E%3C/svg%3E");
+  --i-fatture:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6.5 3.5h11v17l-2.75-1.8-2.75 1.8-2.75-1.8-2.75 1.8z'/%3E%3Cpath d='M9.5 8.5h5M9.5 12h5M9.5 15.5h3'/%3E%3C/svg%3E");
+  --i-collaboratori:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8.5' r='3.2'/%3E%3Cpath d='M3.5 19.5c.5-3.3 2.7-5.2 5.5-5.2s5 1.9 5.5 5.2'/%3E%3Ccircle cx='16.8' cy='9.3' r='2.5'/%3E%3Cpath d='M16.3 14.4c2.3.2 3.8 1.9 4.2 5.1'/%3E%3C/svg%3E");
+  --i-edit:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z'/%3E%3Cpath d='M13.5 6.5l4 4'/%3E%3C/svg%3E");
+  --i-trash:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 7h15M10 4h4M6.5 7l.8 12.2a1.5 1.5 0 0 0 1.5 1.4h6.4a1.5 1.5 0 0 0 1.5-1.4L17.5 7M10 11v6M14 11v6'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 16px 36px -14px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.03);
+    --shadow-3:0 24px 70px -10px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 16px 36px -14px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.03);
+  --shadow-3:0 24px 70px -10px rgba(0,0,0,.8);
+}
+
+/* ---------- comune ---------- */
+body{-webkit-tap-highlight-color:transparent;text-rendering:optimizeLegibility}
+.wrap{overflow-x:clip} /* l'ingresso laterale delle viste non deve far comparire lo scorrimento orizzontale */
+::selection{background:var(--ink);color:var(--on-ink)}
+button,a,select,label,summary,.chip{touch-action:manipulation}
+
+.btn,.chip,.tab,.icon,.tag,.check,.seg2 button,.dayadd,select.inline,.search,
+.addtask input,.addtask select,.addcrew select,.f input,.f select,.f textarea,
+.prow,.ccard,.aday,.checks span,.xl input.cell{
+  transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .22s ease,transform .2s var(--ease-out),opacity .18s ease;
+}
+.btn:active:not(:disabled),.chip:active,.tag:active,.icon:active,.seg2 button:active,.checks span:active,.dayadd:active{transform:scale(.96)}
+.check:active{transform:scale(.88)}
+.btn.primary:hover{opacity:1;box-shadow:0 6px 16px -8px color-mix(in srgb,var(--ink) 70%,transparent)}
+
+.prow,.panel,.ccard,.tile,.mchart,.aday,.calwrap,.sheetwrap,.banner:not(.warn){box-shadow:var(--shadow-1)}
+.prow.dashed{box-shadow:none}
+
+/* Campi: anello morbido al posto del contorno netto */
+.search:focus,.addtask input:focus,.addtask select:focus,.addcrew select:focus,.f input:focus,.f select:focus,.f textarea:focus,select.inline:focus{
+  outline:none;border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 14%,transparent);
+}
+.f input,.f select,.f textarea,.addtask input,.addtask select,.addcrew select{border-radius:10px}
+
+details>summary{transition:color .18s ease}
+details>summary:hover{color:var(--ink)}
+.skel{background:linear-gradient(100deg,var(--surface) 30%,var(--soft) 50%,var(--surface) 70%) 0 0/300% 100%;animation:lana-shimmer 1.4s linear infinite}
+@keyframes lana-shimmer{to{background-position:-150% 0}}
+
+.mcol i{transition:opacity .18s ease}
+.mcol:hover i{opacity:.75}
+.bar i{transition:width .5s var(--ease-out)}
+
+/* Avviso e banner */
+.toast:not([hidden]){animation:lana-toast .38s var(--ease-spring)}
+@keyframes lana-toast{from{opacity:0;transform:translate(-50%,16px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+.banner{animation:lana-fade .3s ease}
+
+/* Modale: apparizione morbida su desktop */
+.sheet:not([hidden]) .scrim{animation:lana-fade .22s ease}
+.sheet:not([hidden]) .panel-m{animation:lana-pop .26s var(--ease-out)}
+.sheet .scrim{background:rgba(10,10,10,.4);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.sheet .panel-m{box-shadow:var(--shadow-3);overscroll-behavior:contain;border-radius:18px}
+@keyframes lana-fade{from{opacity:0}}
+@keyframes lana-pop{from{opacity:0;transform:translateY(10px) scale(.98)}}
+
+/* ---------- desktop e tablet ---------- */
+@media (min-width:721px){
+  .top{background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px)}
+  .tabs{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;box-shadow:var(--shadow-1)}
+  .tab{padding:7px 14px}
+  .tab[aria-current="page"]{box-shadow:0 4px 12px -6px color-mix(in srgb,var(--ink) 60%,transparent)}
+}
+@media (hover:hover){
+  a.prow:hover,.prow.linked:hover,.ccard:hover,.aday:hover{transform:translateY(-2px);box-shadow:var(--shadow-2)}
+  .prow.dashed:hover{box-shadow:none}
+  .ccard:hover{border-color:color-mix(in srgb,var(--ink) 35%,var(--line))}
+  .tile:not(.dark){transition:border-color .18s ease}
+  .tile:not(.dark):hover{border-color:color-mix(in srgb,var(--ink) 30%,var(--line))}
+}
+
+/* ---------- touch: bersagli più grandi ---------- */
+@media (pointer:coarse){
+  .btn{min-height:42px}
+  .btn.small{min-height:38px;padding:7px 13px}
+  .chip{min-height:38px;padding:8px 14px}
+  .icon{min-height:38px;min-width:38px;padding:8px 10px}
+  .tag{padding:6px 10px}
+  select.inline{min-height:42px}
+  .check{position:relative;width:26px;height:26px;border-radius:8px}
+  .check::after{content:"";position:absolute;inset:-10px}
+  .check svg{width:16px;height:16px}
+  .task .acts{opacity:1}
+  .xl .xdel{opacity:1}
+  .dayadd{opacity:.7;min-width:28px;min-height:28px}
+  .seg2 button{padding:9px 16px}
+  .crumbs{align-items:center}
+  .crumbs a,.back{padding:6px 0}
+}
+
+/* ---------- telefono ---------- */
+@media (max-width:720px){
+  /* niente zoom automatico di iOS sui campi */
+  input,select,textarea{font-size:16px!important}
+
+  .top-in{padding-block:10px}
+  .wrap{padding-top:20px;padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+
+  /* Barra delle sezioni in basso, con indicatore a pillola */
+  .tabs{
+    position:fixed;left:0;right:0;bottom:0;z-index:40;margin:0;max-width:none;overflow:visible;
+    display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;
+    padding:6px max(6px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px));
+    background:color-mix(in srgb,var(--surface) 86%,transparent);
+    -webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);
+    border-top:1px solid var(--line);
+  }
+  .tab{
+    position:relative;flex-direction:column;gap:4px;padding:6px 0 4px;border-radius:12px;min-width:0;
+    font-size:11px;font-weight:600;letter-spacing:-.01em;color:var(--muted);background:transparent!important;
+  }
+  .tab::before{
+    content:"";position:relative;z-index:1;width:24px;height:24px;background:currentColor;
+    -webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;
+    transition:transform .3s var(--ease-spring);
+  }
+  .tab::after{
+    content:"";position:absolute;top:3px;left:50%;width:56px;height:30px;margin-left:-28px;border-radius:999px;
+    background:var(--soft);transform:scaleX(.3);opacity:0;transition:transform .35s var(--ease-spring),opacity .2s ease;
+  }
+  .tab[aria-current="page"]{color:var(--ink)}
+  .tab[aria-current="page"]::after{transform:scaleX(1);opacity:1}
+  .tab[aria-current="page"]::before{transform:translateY(-1px)}
+  .tab:active::before{transform:scale(.88)}
+  .tab .count,.tab[aria-current="page"] .count{
+    position:absolute;z-index:2;top:1px;left:calc(50% + 5px);min-width:17px;padding:0 5px;
+    font-size:10px;line-height:17px;text-align:center;background:var(--ink);color:var(--on-ink);
+    box-shadow:0 0 0 2px var(--surface);
+  }
+  .tab[data-tab="clienti"]{--i:var(--i-clienti)}
+  .tab[data-tab="task"]{--i:var(--i-task)}
+  .tab[data-tab="calendario"]{--i:var(--i-calendario)}
+  .tab[data-tab="fatture"]{--i:var(--i-fatture)}
+  .tab[data-tab="collaboratori"]{--i:var(--i-collaboratori)}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+
+  /* Filtri: una riga che scorre, come le chip di Android e iOS */
+  .chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding:2px 16px;scroll-padding-inline:16px;-webkit-overflow-scrolling:touch}
+  .chips::-webkit-scrollbar{display:none}
+  .chip,.chips .sep{flex:none}
+
+  /* Intestazioni di cliente e progetto: titolo a tutta larghezza, comandi sotto */
+  .phead{flex-direction:column;align-items:stretch;gap:14px;margin-bottom:20px}
+  .phead .tools{width:100%}
+  .phead .tools>.btn,.phead .tools>select{flex:1 1 0;justify-content:center}
+  .head{align-items:flex-start}
+
+  /* Task: azioni come icone, il titolo ha più spazio */
+  .task{gap:10px;padding:12px 0;align-items:start}
+  .task .check{margin-top:1px}
+  .task .acts{margin-top:-8px}
+  .task .acts .icon[data-a="edit-task"],.task .acts .icon[data-a="del-task"]{font-size:0;width:40px;height:40px;padding:0;display:grid;place-items:center}
+  .task .acts .icon[data-a="edit-task"]::before,.task .acts .icon[data-a="del-task"]::before{
+    content:"";width:19px;height:19px;background:currentColor;-webkit-mask:var(--i) center/contain no-repeat;mask:var(--i) center/contain no-repeat;
+  }
+  .task .acts .icon[data-a="edit-task"]{--i:var(--i-edit)}
+  .task .acts .icon[data-a="del-task"]{--i:var(--i-trash)}
+  .tlist.panel{padding:2px 14px}
+  .panel{padding:16px}
+
+  /* Calendario: la vista mese entra nello schermo */
+  /* riga 1: ← mese →   riga 2: Oggi · Mese/Elenco */
+  .calbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px}
+  .calbar .month{min-width:0;text-align:center;font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .calbar .grow{display:none}
+  .calbar .seg2{grid-column:2/-1;justify-self:end}
+  .cal{min-width:0}
+  .wd{padding:8px 2px;text-align:center;font-size:10px;letter-spacing:.04em}
+  .day{min-height:76px;padding:3px;gap:3px}
+  .dh{justify-content:center;position:relative}
+  .dayadd{display:none}
+  .dn{font-size:12px;width:22px;height:22px}
+  .cal .ev{padding:2px 4px;border-radius:4px;font-size:10px}
+  .cal .ev .em{display:none}
+  .legend{gap:6px 14px;font-size:12px}
+  .aday{grid-template-columns:52px minmax(0,1fr);gap:12px;padding:12px}
+
+  /* Fatture */
+  .tiles{gap:8px}
+  .tile{padding:12px 14px}
+  .fin.four{grid-template-columns:repeat(2,auto) ;grid-auto-flow:row}
+  .rowend{align-items:flex-end}
+}
+
+/* Pannelli dal basso, con maniglia (in enhance.js si chiudono anche trascinando giù) */
+@media (max-width:640px){
+  .sheet{place-items:end stretch;padding:max(12px,env(safe-area-inset-top,0px)) 0 0}
+  .sheet .panel-m{
+    width:100%;max-height:100%;border-radius:22px 22px 0 0;border-bottom:0;
+    padding:30px 18px calc(18px + env(safe-area-inset-bottom,0px));
+  }
+  .sheet .panel-m::before{content:"";position:absolute;top:10px;left:50%;width:38px;height:5px;margin-left:-19px;border-radius:99px;background:var(--line)}
+  .sheet:not([hidden]) .panel-m{animation:lana-sheet .38s var(--ease-out)}
+  .sheet h2{font-size:21px;margin-bottom:16px}
+  .factions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .factions .grow{display:none}
+  .factions .btn{justify-content:center;min-height:46px}
+  .factions .btn.danger{grid-column:1/-1;order:3}
+  .factions>label.f{grid-column:1/-1;order:-1}
+  .fgrid{gap:12px}
+
+  /* Tabelle fatture e costi come schede (etichette messe da enhance.js) */
+  .sheetwrap{overflow:visible;border:0;background:none;box-shadow:none;border-radius:0}
+  table.xl{min-width:0;display:block;table-layout:auto}
+  .xl colgroup,.xl thead{display:none}
+  .xl tbody,.xl tfoot{display:grid;gap:10px}
+  .xl tfoot{margin-top:10px}
+  .xl tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-1)}
+  .xl tbody tr.ghost{border-style:dashed;background:transparent;box-shadow:none}
+  .xl tbody td{display:block;height:auto;border:0;border-top:1px solid var(--line);min-width:0;background:transparent}
+  .xl tbody td:nth-child(odd):not(.rn):not(.ck):not(:last-child){border-right:1px solid var(--line)}
+  .xl tbody td[data-col="costi"][data-k="dateInvoice"]{grid-column:1/-1;border-right:0}
+  .xl tbody td[data-label]::before{content:attr(data-label);display:block;padding:9px 12px 0;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .xl tbody td.rn::before,.xl tbody td:last-child::before{content:none}
+  .xl tbody td[data-k="desc"],.xl tbody td[data-k="causale"],.xl tbody td.ck{grid-column:1/-1}
+  .xl input.cell{height:42px;padding:0 12px}
+  .xl input.money{text-align:left}
+  .xl tbody td.rn{grid-column:1/-1;border-top:0;text-align:left;padding:10px 12px;font-size:12px;font-weight:700;background:var(--bg);width:auto}
+  .xl tbody tr:not(.ghost) td.rn::before{content:"Riga ";display:inline;padding:0;font-size:inherit;letter-spacing:0;text-transform:none;color:inherit}
+  .xl tbody tr.ghost td.rn{font-size:0;background:transparent}
+  .xl tbody tr.ghost td.rn::before{content:"Nuova riga";display:inline;padding:0;font-size:12px;letter-spacing:0;text-transform:none;color:var(--muted)}
+  .xl tbody tr.ghost td.ck,.xl tbody tr.ghost td:last-child{display:none}
+  .xl tbody td.ck{display:flex;align-items:center;justify-content:space-between;padding:0 12px;min-height:52px;text-align:left}
+  .xl tbody td.ck::before{padding:0}
+  .xl tbody td:last-child{position:absolute;top:0;right:0;border:0}
+  .xl .xdel{width:40px;height:38px}
+  .xl tfoot tr{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r)}
+  .xl tfoot td{padding:0;height:auto;border:0;background:transparent}
+  .xl tfoot td:empty{display:none}
+  .xl tfoot td[colspan]{flex-basis:100%}
+}
+@keyframes lana-sheet{from{transform:translateY(100%)}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
