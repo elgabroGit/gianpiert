@@ -167,3 +167,15 @@
     panel.addEventListener('touchcancel', end);
   }
 })();
+
+/* ---------- accesso all'account: password, copia dei dati, chiave di recupero ---------- */
+(function () {
+  'use strict';
+  const row = document.querySelector('.top-in');
+  if (!row || row.querySelector('.acct')) return;
+  const a = document.createElement('a');
+  a.className = 'acct';
+  a.href = '/account';
+  a.textContent = 'Account';
+  row.append(a);
+})();

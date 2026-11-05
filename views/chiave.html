@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chiave dei dati · Lana Studio</title>
+<link rel="icon" type="image/png" href="/login/mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chango&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/pagine.css">
+</head>
+<body>
+<main class="wide">
+  <div class="brand"><i class="mark" aria-hidden="true"></i><b>LANA</b><span>Studio · gestionale</span></div>
+  <div class="stack">
+    <form id="f1" method="post" action="/chiave" novalidate>
+      <h1 id="title">Chiave dei dati</h1>
+      <p class="hint" id="lead"></p>
+      <p class="msg bad" id="msg" role="alert" hidden></p>
+      <label class="f" id="g-old"><span id="l-old">Password</span><input id="old" type="password" autocomplete="current-password"></label>
+      <label class="f" id="g-rec" hidden><span>Chiave di recupero dello studio</span><input id="rec" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX"></label>
+      <label class="f" id="g-new" hidden><span>La tua nuova password</span><input id="new" type="password" autocomplete="new-password"></label>
+      <label class="f" id="g-new2" hidden><span>Ripeti la nuova password</span><input id="new2" type="password" autocomplete="new-password"></label>
+      <div class="row"><button type="submit" id="go">Continua</button><button type="button" class="ghost" id="out">Esci</button></div>
+    </form>
+
+    <section class="card" id="s2" hidden>
+      <h2>Salva la chiave di recupero</h2>
+      <p>Questa chiave serve a due cose: far entrare l'altra persona dello studio e riaprire i dati se qualcuno dimentica la password. Non è salvata da nessuna parte, quindi se la perdi e dimentichi la password i dati non si recuperano più.</p>
+      <p class="key" id="rk" translate="no"></p>
+      <div class="row"><button type="button" class="ghost" id="copy">Copia</button><button type="button" class="ghost" id="print">Stampa</button></div>
+      <p class="hint">Conservala in un gestore di password o su carta, in un posto che non sia il solito computer. Mandala all'altra persona dello studio con un canale privato.</p>
+      <label class="check"><input type="checkbox" id="saved"><span>Ho salvato la chiave in un posto sicuro.</span></label>
+      <p class="msg bad" id="msg2" role="alert" hidden></p>
+      <button type="button" id="finish" disabled>Attiva la cifratura</button>
+    </section>
+  </div>
+</main>
+<script src="/crypto.js"></script>
+<script src="/pagina.js"></script>
+<script src="/chiave.js"></script>
+</body>
+</html>

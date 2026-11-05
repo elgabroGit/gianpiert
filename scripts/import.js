@@ -83,6 +83,7 @@ Object.entries(docs).forEach(([c, d]) => console.log(`  ${c}: ${d.length}`));
 if (flag('--dry-run')) process.exit(0);
 
 const store = openStore(config.dbFile);
+if (store.encryptionOn()) { store.close(); console.error("L'archivio è cifrato nel browser: i dati si caricano dalla pagina Account (/account), non da qui."); process.exit(1); }
 store.importDocs(docs, replace);
 store.close();
 console.log(`Fatto. Archivio: ${config.dbFile}`);

@@ -9,6 +9,7 @@ const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 const out = path.resolve(process.argv[2] || `lana-export-${stamp}.json`);
 
 const store = openStore(config.dbFile);
+if (store.encryptionOn()) { store.close(); console.error("L'archivio è cifrato nel browser: da qui non si può leggere. Scarica la copia dalla pagina Account (/account)."); process.exit(1); }
 const collections = {};
 for (const col of COLLECTIONS) collections[col] = store.list(col);
 store.close();

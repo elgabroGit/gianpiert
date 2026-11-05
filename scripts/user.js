@@ -1,7 +1,9 @@
 'use strict';
-// Gestione utenti: npm run user -- add <nome> | list | remove <nome> | hash
+// Gestione utenti: npm run user -- add <nome> | list | remove <nome> | hash <nome>
+// Il server conserva l'hash del token derivato dalla password (come fa il browser), non della password.
 const readline = require('readline');
 const bcrypt = require('bcryptjs');
+const { authToken } = require('../public/crypto.js');
 const config = require('../lib/config');
 const { openStore } = require('../lib/store');
 
@@ -26,8 +28,8 @@ async function askPassword() {
 
 async function main() {
   const [cmd, name] = process.argv.slice(2);
-  if (cmd === 'hash') {
-    console.log(await bcrypt.hash(await askPassword(), ROUNDS));
+  if (cmd === 'hash' && name) {
+    console.log(await bcrypt.hash(await authToken(name, await askPassword()), ROUNDS));
     return;
   }
   const store = openStore(config.dbFile);
@@ -35,8 +37,10 @@ async function main() {
     if (cmd === 'add' && name) {
       if (!/^[A-Za-z0-9._-]{2,40}$/.test(name)) throw new Error('Nome utente: 2-40 caratteri tra lettere, numeri, punto, trattino.');
       const existed = !!store.findUser(name);
-      store.saveUser(name, await bcrypt.hash(await askPassword(), ROUNDS));
-      console.log(existed ? `Password aggiornata per ${name}.` : `Utente ${name} creato.`);
+      store.saveUser(name, await bcrypt.hash(await authToken(name, await askPassword()), ROUNDS));
+      if (!existed) console.log(`Utente ${name} creato. Al primo accesso sceglierà la sua password.`);
+      else if (store.encryptionOn()) console.log(`Password di ${name} reimpostata. Per riaprire i dati userà la chiave di recupero dello studio: tu non vedi né dati né chiavi.`);
+      else console.log(`Password di ${name} reimpostata.`);
     } else if (cmd === 'remove' && name) {
       console.log(store.deleteUser(name) ? `Utente ${name} eliminato.` : `Nessun utente ${name}.`);
     } else if (cmd === 'list') {
@@ -44,7 +48,7 @@ async function main() {
       if (!us.length) console.log('Nessun utente.');
       us.forEach(u => console.log(`${u.username}  (creato il ${new Date(u.created_at).toLocaleString('it-IT')})`));
     } else {
-      console.log('Uso: npm run user -- add <nome> | list | remove <nome> | hash');
+      console.log('Uso: npm run user -- add <nome> | list | remove <nome> | hash <nome>');
       process.exitCode = 1;
     }
   } finally {

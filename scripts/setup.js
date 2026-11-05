@@ -63,22 +63,26 @@ else {
 step(5, 'Utenti');
 const config = require('../lib/config');
 const { openStore } = require('../lib/store');
+const { authToken } = require('../public/crypto.js');
 const bcrypt = require('bcryptjs');
-const store = openStore(config.dbFile);
-const created = [];
-for (const name of users) {
-  if (!/^[A-Za-z0-9._-]{2,40}$/.test(name)) { console.log(`Nome non valido, saltato: ${name}`); continue; }
-  if (store.findUser(name)) { console.log(`${name} esiste già, password invariata.`); continue; }
-  const pass = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').slice(0, 12);
-  store.saveUser(name, bcrypt.hashSync(pass, 12));
-  created.push([name, pass]);
-}
-const all = store.listUsers().map(u => u.username);
-store.close();
-if (created.length) {
-  console.log('Utenti creati (password mostrata solo ora, va cambiata con: npm run user -- add <nome>):');
-  created.forEach(([n, p]) => console.log(`  ${n}  ${p}`));
-}
-console.log(all.length ? `Utenti nel database: ${all.join(', ')}` : 'Nessun utente: rilancia con --user <nome>.');
 
-console.log(`\nPronto. Avvia con: npm start  (poi apri http://localhost:${config.port})`);
+(async () => {
+  const store = openStore(config.dbFile);
+  const created = [];
+  for (const name of users) {
+    if (!/^[A-Za-z0-9._-]{2,40}$/.test(name)) { console.log(`Nome non valido, saltato: ${name}`); continue; }
+    if (store.findUser(name)) { console.log(`${name} esiste già, password invariata.`); continue; }
+    const pass = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g, '').slice(0, 12);
+    store.saveUser(name, bcrypt.hashSync(await authToken(name, pass), 12));
+    created.push([name, pass]);
+  }
+  const all = store.listUsers().map(u => u.username);
+  store.close();
+  if (created.length) {
+    console.log('Utenti creati con una password temporanea (mostrata solo ora; al primo accesso ognuno ne sceglie una sua):');
+    created.forEach(([n, p]) => console.log(`  ${n}  ${p}`));
+  }
+  console.log(all.length ? `Utenti nel database: ${all.join(', ')}` : 'Nessun utente: rilancia con --user <nome>.');
+
+  console.log(`\nPronto. Avvia con: npm start  (poi apri http://localhost:${config.port})`);
+})();

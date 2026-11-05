@@ -1,0 +1,64 @@
+/* Stili condivisi delle pagine di Lana: accesso, chiave dello studio, account. */
+/* Stessi token di colore e font del gestionale (public/index.html) */
+:root{
+  --bg:#F2F2EF; --surface:#FFFFFF; --ink:#111110; --muted:#696965; --line:#D8D8D3; --on-ink:#FAFAF8;
+  --bad:#A2231B; --bad-bg:#F5DCD9; --warn:#875800; --warn-bg:#F4E6C9;
+  --f-display:'Chango','Arial Black',Impact,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#0E0E0D; --surface:#171716; --ink:#F0F0EC; --muted:#9B9B95; --line:#2D2D2B; --on-ink:#0E0E0D;
+    --bad:#F08B80; --bad-bg:#331A18; --warn:#E2B04F; --warn-bg:#2C2312; color-scheme:dark}
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+main{width:min(380px,100%)}
+main.wide{width:min(560px,100%)}
+.brand{display:flex;align-items:baseline;gap:10px;margin-bottom:22px}
+.brand b{font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.02em;line-height:1}
+.brand .mark{width:26px;height:26px;align-self:center;background:var(--ink);-webkit-mask:url(/login/mark.png) center/contain no-repeat;mask:url(/login/mark.png) center/contain no-repeat;flex:none}
+.brand span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
+h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px;line-height:1.1}
+.f{display:grid;gap:6px}
+.f>span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+input{font:inherit;font-size:16px;color:inherit;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;width:100%;transition:border-color .18s ease,box-shadow .2s ease}
+input:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 14%,transparent)}
+button{font:inherit;border:1px solid var(--ink);background:var(--ink);color:var(--on-ink);border-radius:999px;padding:12px 16px;font-weight:600;font-size:15px;cursor:pointer;margin-top:6px;transition:transform .18s ease,box-shadow .2s ease;touch-action:manipulation}
+button:hover{box-shadow:0 6px 16px -8px color-mix(in srgb,var(--ink) 70%,transparent)}
+button:active{transform:scale(.97)}
+form{box-shadow:0 14px 32px -14px rgba(17,17,16,.22)}
+main{animation:enter .45s cubic-bezier(.2,.8,.2,1)}
+.msg:not([hidden]){animation:enter .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes enter{from{opacity:0;transform:translateY(10px)}}
+@media (prefers-reduced-motion:reduce){main,.msg{animation:none!important}}
+.msg{margin:0;font-size:14px;border-radius:8px;padding:9px 12px}
+.msg.bad{background:var(--bad-bg);color:var(--bad)}
+.msg.warn{background:var(--warn-bg);color:var(--warn)}
+
+/* Pagine dopo l'accesso: chiave dello studio e account */
+.stack{display:grid;gap:16px}
+section.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:12px;box-shadow:0 14px 32px -14px rgba(17,17,16,.22)}
+h2{font-family:var(--f-display);font-weight:400;font-size:18px;margin:0;line-height:1.15}
+p{margin:0}
+.hint{font-size:14px;color:var(--muted)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+:root{--ok:#1E5B34;--ok-bg:#DDEEDF}
+@media (prefers-color-scheme: dark){:root{--ok:#8AD3A1;--ok-bg:#16291C}}
+.key{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:17px;line-height:1.6;letter-spacing:.04em;word-break:break-word;background:var(--bg);border:1px dashed var(--ink);border-radius:10px;padding:14px;user-select:all}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.check input{width:auto;margin-top:3px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+button.ghost{background:transparent;color:var(--ink)}
+button[disabled]{opacity:.5;cursor:default;box-shadow:none;transform:none}
+a.back{color:var(--muted);font-size:14px;text-decoration:none}
+a.back:hover{color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+select{font:inherit;font-size:14px;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.radio{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.radio input{width:auto;margin-top:3px}
+[hidden]{display:none!important}

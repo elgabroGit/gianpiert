@@ -27,11 +27,15 @@ SSE, export e import su un archivio temporaneo, senza toccare `data/`.
 ## Struttura
 
 ```
-server.js                     Express: accesso, pagina dell'app, API REST e SSE
+server.js                     Express: accesso, pagine, API REST e SSE
 lib/config.js                 variabili d'ambiente (.env)
-lib/store.js                  SQLite: tabella documents (e users), versioni per If-Match
+lib/store.js                  SQLite: tabella documents, users, studio (chiave di recupero), versioni per If-Match
 public/index.html             copia dell'originale + righe che caricano shim ed enhance
-public/shim.js                window.claude.use('db') sopra le API del server
+public/shim.js                window.claude.use('db') sopra le API del server; cifra e decifra i documenti
+public/crypto.js              cifratura (browser e Node): password, chiavi, documenti
+public/importa.js             lettura dei file di dati da caricare (browser e Node)
+public/login.js, chiave.js, account.js, pagina.js, pagine.css   pagine di accesso, chiave dei dati e account
+views/chiave.html, account.html   le due pagine dopo l'accesso
 public/enhance.css            ritocchi grafici: telefono, desktop, animazioni CSS
 public/enhance.js             animazioni di ingresso, schede fatture su telefono, chiusura a trascinamento
 views/login.html              pagina di accesso, stessi colori e font dell'app
@@ -56,6 +60,40 @@ Collezioni ammesse: `clients`, `projects`, `tasks`, `collaborators`, `fatture`, 
 Ogni scrittura aggiorna `updated_at` (millisecondi, sempre crescente per lo stesso documento),
 che fa anche da numero di versione. Gli utenti stanno nella tabella `users` dello stesso file.
 
+## Privacy: i dati sono cifrati nel browser
+
+Chi amministra il server (e chiunque legga il disco o i backup) non può leggere i dati dello studio.
+
+- La **chiave dei dati** (AES-GCM 256) nasce nel browser alla prima configurazione. Al server arriva solo
+  *avvolta*: una copia cifrata con la password di ciascuna persona (PBKDF2, 600.000 giri) e una cifrata con la
+  **chiave di recupero** dello studio (32 caratteri, 160 bit, mostrata una volta sola).
+- Ogni documento viene cifrato nel browser con quella chiave e legato a `collezione/id`. Il server conserva
+  `{_enc, iv, ct}`. Restano in chiaro solo nome della collezione, id, data di modifica e dimensioni.
+- La **password non arriva al server**: dal browser parte un token derivato (PBKDF2 con sale legato al nome
+  utente); il server ne tiene l'hash bcrypt. Il token non apre la chiave dei dati.
+- Dopo l'accesso la chiave resta nel browser come oggetto non estraibile (IndexedDB) fino all'uscita.
+- Le pagine di accesso, chiave e account hanno una CSP senza script inline.
+- `secure_delete` e un `VACUUM` dopo la prima configurazione evitano che restino copie in chiaro scritte prima.
+
+Cosa NON protegge: chi controlla il server può cambiare il codice che invia al browser e rubare password o chiave
+(per questo il codice va aggiornato solo dal repository, senza modifiche a mano sulla macchina). Chi ha il
+browser aperto e sbloccato vede i dati. Se si perdono sia la password sia la chiave di recupero, i dati non si
+recuperano: non esiste un modo di aggirarlo, nemmeno per chi amministra.
+
+### Primo avvio con la cifratura
+
+1. Chi amministra crea gli utenti con una password provvisoria: `npm run user -- add gianpiero`.
+2. La prima persona che entra viene portata su `/chiave`: sceglie la sua password, riceve la chiave di recupero
+   e la salva. Da quel momento i dati (anche quelli già presenti) sono cifrati.
+3. Passa la chiave di recupero all'altra persona con un canale privato. Entrando, andrà su `/chiave`, inserirà
+   la sua password provvisoria, la chiave di recupero e una nuova password.
+4. In **Account** (link in alto a destra) ognuno cambia la password, carica i dati, scarica una copia di
+   sicurezza, crea una nuova chiave di recupero ed esce.
+
+Password dimenticata: chi amministra la reimposta con `npm run user -- add <nome>` (vede solo la password
+provvisoria); la persona rientra con la chiave di recupero e ne sceglie una nuova. Il blocco della chiave si
+azzera con la reimpostazione, quindi senza la chiave di recupero non si riaprono i dati.
+
 ## Variabili d'ambiente
 
 | Variabile | Default | Cosa fa |
@@ -65,21 +103,25 @@ che fa anche da numero di versione. Gli utenti stanno nella tabella `users` dell
 | `SESSION_DAYS` | `30` | durata della sessione |
 | `COOKIE_SECURE` | `0` | `1` se il sito è in HTTPS dietro un proxy (attiva anche `trust proxy`) |
 | `DB_FILE` | `data/lana.sqlite` | percorso del file SQLite, relativo alla cartella del progetto |
-| `INITIAL_USERS` | vuoto | utenti creati al primo avvio se la tabella `users` è vuota: `gianpiero:<hash>,mirko:<hash>`. L'hash si ottiene con `npm run user -- hash` |
+| `INITIAL_USERS` | vuoto | utenti creati al primo avvio se la tabella `users` è vuota: `gianpiero:<hash>,mirko:<hash>`. L'hash si ottiene con `npm run user -- hash <nome>` (è l'hash del token derivato, non della password) |
 
 ## Utenti
 
 ```bash
-npm run user -- add <nome>     # crea l'utente o cambia la password
+npm run user -- add <nome>     # crea l'utente con una password provvisoria, o la reimposta
 npm run user -- list
 npm run user -- remove <nome>  # chi è collegato con quel nome perde l'accesso alla richiesta successiva
-npm run user -- hash           # stampa un hash bcrypt da usare in INITIAL_USERS
+npm run user -- hash <nome>    # stampa l'hash da usare in INITIAL_USERS
 ```
 
-Le password sono salvate con bcrypt (libreria `bcryptjs`, senza componenti nativi). Il nome utente non
-distingue maiuscole e minuscole. Dopo 10 tentativi sbagliati dallo stesso indirizzo l'accesso si blocca per
-15 minuti. Per uscire: `/logout`. L'app originale non ha un pulsante di uscita e non ne è stato aggiunto
-uno, per non toccare l'interfaccia.
+Il server salva l'hash bcrypt (libreria `bcryptjs`) del token che il browser ricava dalla password, mai la
+password. Il nome utente non distingue maiuscole e minuscole. Dopo 10 tentativi sbagliati dallo stesso indirizzo
+l'accesso si blocca per 15 minuti (stesso limite per i controlli di password in `/account` e `/chiave`).
+Reimpostare o cambiare la password chiude le altre sessioni dello stesso utente. Si esce da **Account** o da
+`/logout`; l'originale non ha un pulsante di uscita, quindi in alto a destra c'è solo il link **Account**.
+
+Utenti creati prima della cifratura (con la password in chiaro nell'hash) non entrano più: vanno ricreati
+con `npm run user -- add <nome>`.
 
 La sessione è un cookie firmato (`cookie-session`), quindi non serve memoria lato server e sopravvive ai
 riavvii. Per chiudere tutte le sessioni aperte basta cambiare `SESSION_SECRET`.
@@ -89,8 +131,17 @@ riavvii. Per chiudere tutte le sessioni aperte basta cambiare `SESSION_SECRET`.
 Tutte le rotte `/api` e la pagina dell'app richiedono l'accesso (senza sessione: `401` per le API,
 rimando a `/login` per le pagine).
 
+Con la cifratura attiva (dopo la prima configurazione) `PUT` accetta solo documenti cifrati `{_enc, iv, ct}` e
+`PATCH` risponde `405`: l'unione dei campi la fa lo shim nel browser.
+
 | Metodo e percorso | Cosa fa |
 |---|---|
+| `GET /api/me` | utente, stato della chiave (`none`, `locked`, `ready`) e blocco della chiave dell'utente |
+| `POST /api/account/check` | verifica il token di password (serve prima di avvolgere la chiave) |
+| `POST /api/account/password` | cambia password; con la cifratura attiva porta il nuovo blocco della chiave |
+| `GET/PUT /api/keys/recovery` | blocco della chiave di recupero: lettura, sostituzione |
+| `POST /api/keys/setup` | prima configurazione: blocchi della chiave e collezioni già presenti, cifrate |
+| `POST /api/import` | carica documenti già cifrati (`replace: true` svuota le collezioni indicate) |
 | `GET /api/:collection` | elenco `[{id, data, updated_at}]`, con l'intestazione `X-Lana-Seq` |
 | `PUT /api/:collection/:id` | crea o sostituisce il documento (come `set`) |
 | `PATCH /api/:collection/:id` | unisce i campi al documento esistente (come `update`), `404` se non esiste |
@@ -149,6 +200,10 @@ originale e lo sovrascrivono:
   aggiornamento dal server, e si disattivano con "riduci movimento" del sistema.
 
 ## Esportare e importare
+
+Con la cifratura attiva i comandi da terminale sotto rifiutano di lavorare (vedrebbero solo dati illeggibili):
+**caricamento e copia di sicurezza si fanno dalla pagina Account**, che legge gli stessi formati e cifra o
+decifra nel browser. Il resto di questa sezione vale per un archivio non ancora cifrato.
 
 ```bash
 npm run export                         # scrive lana-export-AAAA-MM-GG-hh-mm-ss.json

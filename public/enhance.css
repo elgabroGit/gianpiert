@@ -260,3 +260,8 @@ details>summary:hover{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* Collegamento all'account nell'intestazione */
+.acct{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:7px 14px;border:1px solid var(--line);border-radius:999px;white-space:nowrap;transition:color .18s ease,border-color .18s ease}
+.acct:hover{color:var(--ink);border-color:var(--ink)}
+@media (max-width:720px){.acct{margin-left:auto}}

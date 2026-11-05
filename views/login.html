@@ -8,64 +8,26 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chango&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
-<style>
-/* Stessi token di colore e font del gestionale (public/index.html) */
-:root{
-  --bg:#F2F2EF; --surface:#FFFFFF; --ink:#111110; --muted:#696965; --line:#D8D8D3; --on-ink:#FAFAF8;
-  --bad:#A2231B; --bad-bg:#F5DCD9; --warn:#875800; --warn-bg:#F4E6C9;
-  --f-display:'Chango','Arial Black',Impact,sans-serif;
-  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --r:10px; color-scheme:light;
-}
-@media (prefers-color-scheme: dark){
-  :root{--bg:#0E0E0D; --surface:#171716; --ink:#F0F0EC; --muted:#9B9B95; --line:#2D2D2B; --on-ink:#0E0E0D;
-    --bad:#F08B80; --bad-bg:#331A18; --warn:#E2B04F; --warn-bg:#2C2312; color-scheme:dark}
-}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
-:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
-main{width:min(380px,100%)}
-.brand{display:flex;align-items:baseline;gap:10px;margin-bottom:22px}
-.brand b{font-family:var(--f-display);font-weight:400;font-size:24px;letter-spacing:.02em;line-height:1}
-.brand .mark{width:26px;height:26px;align-self:center;background:var(--ink);-webkit-mask:url(/login/mark.png) center/contain no-repeat;mask:url(/login/mark.png) center/contain no-repeat;flex:none}
-.brand span{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:14px}
-h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0 0 4px;line-height:1.1}
-.f{display:grid;gap:6px}
-.f>span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
-input{font:inherit;font-size:16px;color:inherit;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px 12px;width:100%;transition:border-color .18s ease,box-shadow .2s ease}
-input:focus{outline:none;border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 14%,transparent)}
-button{font:inherit;border:1px solid var(--ink);background:var(--ink);color:var(--on-ink);border-radius:999px;padding:12px 16px;font-weight:600;font-size:15px;cursor:pointer;margin-top:6px;transition:transform .18s ease,box-shadow .2s ease;touch-action:manipulation}
-button:hover{box-shadow:0 6px 16px -8px color-mix(in srgb,var(--ink) 70%,transparent)}
-button:active{transform:scale(.97)}
-form{box-shadow:0 14px 32px -14px rgba(17,17,16,.22)}
-main{animation:enter .45s cubic-bezier(.2,.8,.2,1)}
-.msg:not([hidden]){animation:enter .3s cubic-bezier(.2,.8,.2,1)}
-@keyframes enter{from{opacity:0;transform:translateY(10px)}}
-@media (prefers-reduced-motion:reduce){main,.msg{animation:none!important}}
-.msg{margin:0;font-size:14px;border-radius:8px;padding:9px 12px}
-.msg.bad{background:var(--bad-bg);color:var(--bad)}
-.msg.warn{background:var(--warn-bg);color:var(--warn)}
-</style>
+<link rel="stylesheet" href="/pagine.css">
 </head>
 <body>
 <main>
   <div class="brand"><i class="mark" aria-hidden="true"></i><b>LANA</b><span>Studio · gestionale</span></div>
-  <form method="post" action="/login" id="login">
+  <form id="login" method="post" action="/login">
     <h1>Accedi</h1>
-    <p class="msg bad" id="err-1" role="alert" hidden>Nome utente o password non corretti.</p>
+    <p class="msg bad" id="err-credenziali" role="alert" hidden>Nome utente o password non corretti.</p>
     <p class="msg warn" id="err-troppi" role="alert" hidden>Troppi tentativi sbagliati. Riprova tra 15 minuti.</p>
+    <p class="msg bad" id="err-rete" role="alert" hidden>Il server non risponde. Riprova tra un momento.</p>
+    <p class="msg bad" id="err-chiave" role="alert" hidden>Accesso riuscito, ma non riesco ad aprire la chiave dei dati con questa password.</p>
+    <p class="msg bad" id="err-browser" role="alert" hidden>Questo browser non supporta la cifratura, oppure il sito non è aperto in https.</p>
     <label class="f"><span>Nome utente</span><input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></label>
     <label class="f"><span>Password</span><input name="password" type="password" autocomplete="current-password" required></label>
-    <button type="submit">Entra</button>
+    <button type="submit" id="go">Entra</button>
+    <p class="hint">La password resta nel tuo browser: al server arriva solo una prova che la conosci.</p>
   </form>
+  <noscript><p class="msg bad">Serve JavaScript per accedere.</p></noscript>
 </main>
-<script>
-  var e = new URLSearchParams(location.search).get('e');
-  var m = e && document.getElementById('err-' + e);
-  if (m) m.hidden = false;
-  // Dopo l'accesso si torna alla sezione da cui si era partiti (#task, #fatture...).
-  if (location.hash) document.getElementById('login').action = '/login' + location.hash;
-</script>
+<script src="/crypto.js"></script>
+<script src="/login.js"></script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 /*
  * Sostituisce window.claude.use('db') della piattaforma claude.ai con le API di server.js.
+ * I documenti sono cifrati qui, nel browser, con la chiave dei dati (public/crypto.js): il server
+ * conserva e inoltra solo {_enc, iv, ct}. Senza la chiave aperta in questo browser si passa da /chiave.
  * Superficie usata dall'app (e solo quella):
  *   db.collection(nome).onSnapshot(ok, errore)  -> ok({docs:[{id, data()}]})
  *   db.doc('collezione/id').set(obj) / .update(parziale) / .delete()
@@ -20,6 +22,7 @@
   const versions = new Map();  // collezione -> Map(id -> updated_at), per If-Match
 
   let es = null, pollTimer = null, reopenTimer = null, startTimer = null, revoked = false;
+  let C = null, dek = null; // LanaCrypto e chiave dei dati, pronte dopo ready()
 
   function fail(code, message) {
     const e = new Error(message || code);
@@ -44,15 +47,40 @@
     return { docs: list, size: list.length, empty: list.length === 0, forEach: fn => list.forEach(fn) };
   }
 
-  function apply(col, seq, docs) {
-    if (typeof seq === 'number' && lastSeq.has(col) && seq <= lastSeq.get(col)) return;
+  const isStale = (col, seq) => typeof seq === 'number' && lastSeq.has(col) && seq <= lastSeq.get(col);
+
+  async function apply(col, seq, docs) {
+    if (isStale(col, seq)) return;
+    const plain = [];
+    let unreadable = 0;
+    for (const d of docs) {
+      try { plain.push({ id: d.id, updated_at: d.updated_at, data: await C.decryptDoc(dek, col, d.id, d.data) }); }
+      catch (e) { unreadable++; console.error('Documento non apribile:', col, d.id, e.code || e); }
+    }
+    notice(unreadable);
+    // Mentre decifravo può essere passata un'istantanea più recente: quella vince.
+    if (isStale(col, seq)) return;
     if (typeof seq === 'number') lastSeq.set(col, seq);
     // Una nostra scrittura può avere una versione più recente di un'istantanea ancora in viaggio.
     const old = verMap(col), next = new Map();
-    docs.forEach(d => next.set(d.id, Math.max(d.updated_at || 0, old.get(d.id) || 0)));
+    plain.forEach(d => next.set(d.id, Math.max(d.updated_at || 0, old.get(d.id) || 0)));
     versions.set(col, next);
-    latest.set(col, docs);
-    (listeners.get(col) || []).forEach(l => { try { l.ok(makeSnapshot(docs)); } catch (e) { console.error(e); } });
+    latest.set(col, plain);
+    (listeners.get(col) || []).forEach(l => { try { l.ok(makeSnapshot(plain)); } catch (e) { console.error(e); } });
+  }
+
+  // Se dei documenti non si aprono con questa chiave lo dico, invece di far sembrare vuoto l'archivio.
+  function notice(n) {
+    let bar = document.getElementById('lana-cifratura');
+    if (!n) { if (bar) bar.remove(); return; }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'lana-cifratura';
+      bar.setAttribute('role', 'alert');
+      bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99;padding:10px 16px;background:#F4E6C9;color:#4A3000;font:14px/1.4 system-ui,sans-serif;text-align:center';
+      document.body.append(bar);
+    }
+    bar.textContent = 'Alcuni dati non si aprono con la chiave di questo browser. Non modificare nulla: vai su Account, esci, rientra e riprova.';
   }
 
   function revoke() {
@@ -74,7 +102,7 @@
       if (res.status === 401) return revoke();
       if (!res.ok) continue;
       const seq = Number(res.headers.get('X-Lana-Seq'));
-      apply(col, Number.isFinite(seq) ? seq : undefined, await res.json());
+      await apply(col, Number.isFinite(seq) ? seq : undefined, await res.json());
     }
   }
   function startPolling() {
@@ -93,7 +121,9 @@
     const cols = [...listeners.keys()];
     es = new EventSource('/api/stream?c=' + cols.map(encodeURIComponent).join(','));
     es.addEventListener('snapshot', ev => {
-      try { const m = JSON.parse(ev.data); apply(m.collection, m.seq, m.docs || []); } catch (e) { console.error(e); }
+      let m;
+      try { m = JSON.parse(ev.data); } catch (e) { return console.error(e); }
+      apply(m.collection, m.seq, m.docs || []).catch(e => console.error(e));
     });
     es.onopen = () => stopPolling();
     es.onerror = () => {
@@ -113,16 +143,27 @@
   }
 
   /* ---------- scritture ---------- */
-  async function send(method, col, id, body) {
+  // PUT con il documento cifrato; "update" unisce i campi qui, perché il server non può leggere il contenuto.
+  async function send(method, col, id, data) {
     const headers = {};
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    let body;
+    let plain = null;
+    if (method !== 'DELETE') {
+      if (method === 'PATCH') {
+        const cur = (latest.get(col) || []).find(d => d.id === id);
+        if (!cur) throw fail('not_found', 'Documento inesistente');
+        plain = Object.assign(clone(cur.data), data);
+      } else plain = data;
+      try { body = JSON.stringify(await C.encryptDoc(dek, col, id, plain)); }
+      catch (e) { throw fail('invalid_argument', 'Impossibile cifrare il documento'); }
+      headers['Content-Type'] = 'application/json';
+    }
     const v = verMap(col).get(id);
     if (v && method !== 'DELETE') headers['If-Match'] = String(v);
     let res;
     try {
       res = await fetch('/api/' + encodeURIComponent(col) + '/' + encodeURIComponent(id), {
-        method, headers, credentials: 'same-origin', cache: 'no-store',
-        body: body === undefined ? undefined : JSON.stringify(body),
+        method: method === 'PATCH' ? 'PUT' : method, headers, credentials: 'same-origin', cache: 'no-store', body,
       });
     } catch (e) {
       throw fail('unavailable', 'Server non raggiungibile');
@@ -133,7 +174,12 @@
     }
     if (method === 'DELETE') { verMap(col).delete(id); return; }
     const j = await res.json().catch(() => null);
-    if (j && j.updated_at) verMap(col).set(id, Math.max(j.updated_at, verMap(col).get(id) || 0));
+    const nv = j && j.updated_at ? Math.max(j.updated_at, verMap(col).get(id) || 0) : null;
+    if (nv) verMap(col).set(id, nv);
+    // Ricordo subito il documento com'è ora: due modifiche ravvicinate non devono partire dalla stessa base.
+    const list = (latest.get(col) || []).filter(d => d.id !== id);
+    list.push({ id, data: clone(plain), updated_at: nv || v || 0 });
+    latest.set(col, list);
   }
 
   function doc(path) {
@@ -173,9 +219,39 @@
 
   const db = { collection, doc };
 
+  /* ---------- chiave dei dati ---------- */
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Non riesco a caricare ' + src));
+      document.head.append(el);
+    });
+  }
+  const goKey = () => { location.replace('/chiave' + location.hash); return new Promise(() => {}); };
+
+  let readyPromise = null;
+  function ready() {
+    if (readyPromise) return readyPromise;
+    readyPromise = (async () => {
+      if (!window.LanaCrypto) await loadScript('/crypto.js');
+      C = window.LanaCrypto;
+      let res;
+      try { res = await fetch('/api/me', { credentials: 'same-origin', cache: 'no-store' }); }
+      catch (e) { throw fail('unavailable', 'Server non raggiungibile'); }
+      if (res.status === 401) { revoke(); throw fail('revoked', 'Sessione scaduta'); }
+      if (!res.ok) throw fail('unavailable', 'HTTP ' + res.status);
+      const me = await res.json();
+      if (me.keys !== 'ready') return goKey();
+      const k = await C.loadKey();
+      if (!k || k.user !== String(me.user).toLowerCase()) return goKey();
+      dek = k.dek;
+    })().catch(e => { readyPromise = null; throw e; });
+    return readyPromise;
+  }
+
   window.claude = Object.assign(window.claude || {}, {
     use: async name => {
-      if (name === 'db') return db;
+      if (name === 'db') { await ready(); return db; }
       throw fail('invalid_argument', 'Servizio non disponibile: ' + name);
     },
   });

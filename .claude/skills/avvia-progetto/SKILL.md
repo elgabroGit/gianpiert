@@ -96,7 +96,7 @@ Chiedi prima all'utente con quali nomi vuole entrare (per esempio `gianpiero` e 
 4. crea `.env` con un `SESSION_SECRET` casuale, se non esiste già;
 5. crea gli utenti mancanti con una **password casuale stampata una sola volta**.
 
-Riporta all'utente nomi e password generate e digli che può cambiarle con `npm run user -- add <nome>`
+Riporta all'utente nomi e password generate e digli che sono provvisorie: al primo accesso ognuno sceglie la sua su `/chiave` e riceve la chiave di recupero dei dati (si cambia poi da Account; `npm run user -- add <nome>` serve solo a reimpostarla)
 (il comando chiede la password due volte e va lanciato da lui in un terminale, perché non mostra cosa si scrive).
 Non scrivere le password in file.
 
